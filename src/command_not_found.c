@@ -91,12 +91,6 @@ close_dir(DIR *dir, const char *path)
         errx(EXIT_FAILURE, "failed to close '%s'", path);
 }
 
-static int
-is_executable(const char *path)
-{
-    return access(path, X_OK);
-}
-
 /*
  * main functions
  */
@@ -136,7 +130,7 @@ commands_list(char *path, size_t filter, size_t *num)
             if (snprintf(file_path, sizeof file_path, "%s/%s", tok, content->d_name) < 0)
                 errx(EXIT_FAILURE, "failed to build path to '%s'", content->d_name);
 
-            if (is_executable(file_path) == 0) {
+            if (access(file_path, X_OK) == 0) {
                 list[cur] = allocate(LINE_MAX * sizeof *list[cur]);
 
                 strncpy(list[cur], content->d_name, LINE_MAX * sizeof *list[cur]);
