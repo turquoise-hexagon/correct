@@ -91,7 +91,7 @@ close_dir(DIR *dir, const char *path)
         errx(EXIT_FAILURE, "failed to close '%s'", path);
 }
 
-static unsigned short
+static int
 is_executable(const char *path)
 {
     return access(path, X_OK);
