@@ -71,12 +71,14 @@ distance(
             );
 
             if (
-                   i > 1
-                && j > 1
+                i > 1 && j > 1
                 && str1[i - 1] == str2[j - 2]
                 && str2[j - 1] == str1[i - 2]
                )
-                array[i][j] = min2(array[i][j], array[i - 2][j - 2] + 1);
+                array[i][j] = min2(
+                    array[i][j],
+                    array[i - 2][j - 2] + 1
+                );
         }
 
     return array[len1][len2];
