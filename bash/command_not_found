@@ -1,5 +1,5 @@
 command_not_found_handle() {
-    command_not_found "$1"
+    command_not_found "$1" >&2
 }
 
 # vim: ft=sh
