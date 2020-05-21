@@ -112,6 +112,9 @@ main(int argc, char **argv)
 
     qsort(array, cnt, sizeof *array, comparison);
 
+    /* print message and closest matches */
+    printf("no command '%s' found, did you mean :\n", argv[1]);
+
     for (unsigned i = 0; i < NB && i < cnt; ++i)
         printf("%s\n", array[i].word);
 
