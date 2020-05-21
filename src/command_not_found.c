@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "config.h"
+
 static unsigned array[LINE_MAX][LINE_MAX];
 
 struct item {
@@ -108,7 +110,7 @@ main(int argc, char **argv)
 
     qsort(array, cnt, sizeof *array, comparison);
 
-    for (unsigned i = 0; i < 5 && i < cnt; ++i)
+    for (unsigned i = 0; i < NB && i < cnt; ++i)
         printf("%s\n", array[i].word);
 
     free(array);
