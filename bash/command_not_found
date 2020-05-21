@@ -1,8 +1,5 @@
 command_not_found_handle() {
-    # get list of commands
-    mapfile -t cmds < <(compgen -c)
-
-    command_not_found "$1" "${cmds[@]}" >&2
+    command_not_found "$1"
 }
 
 # vim: ft=sh
