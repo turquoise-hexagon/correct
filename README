@@ -1,0 +1,15 @@
+command_not_found
+=================
+
+usage
+-----
+    * helper
+        $ ./make.sh
+        $ export PATH+=:./bin
+    * bash integration
+        $ . bash/command_not_found 
+
+depends on
+----------
+    * gcc
+    * bash
