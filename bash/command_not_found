@@ -4,7 +4,7 @@ command_not_found_handle() {
 
     {
         echo "no command '$1' found, did you mean :"
-        command_not_found_helper "$1" "${cmds[@]}"
+        command_not_found "$1" "${cmds[@]}"
     } >&2
 }
 
