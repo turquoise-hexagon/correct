@@ -1,15 +1,21 @@
-command_not_found
-=================
+correct
+=======
+    another command-line correction program
 
 usage
 -----
-    * helper
+    * program
         $ ./make.sh
-        $ export PATH+=:./bin
-    * bash integration
-        $ . bash/command_not_found 
+        $ bin/correct
+    * documentation
+        $ cd doc
+        $ ./make.sh
+        $ man ./correct.1.gz
+    * examples
+        $ . etc/$example
 
 depends on
 ----------
-    * gcc
     * bash
+    * docutils
+    * gcc

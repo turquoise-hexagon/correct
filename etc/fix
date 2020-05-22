@@ -1,0 +1,19 @@
+command_not_found_handle() {
+    echo "${SHELL##*/}: command '$1' not found" >&2
+
+    echo "$1" > /tmp/fix
+}
+
+fix() {
+    local old new input
+
+    read -r old < /tmp/fix
+    read -r new < <(correct "$old")
+
+    read -rp "did you mean '$new' <y|n> ? " input >&2
+
+    [[ $input == y ]] &&
+        fc -s "$old=$new"
+}
+
+# vim: ft=sh

@@ -236,8 +236,6 @@ main(int argc, char **argv)
     qsort(items, num, sizeof(*items), compitem);
 
     /* print suggestions */
-    printf("no command '%s' found, did you mean :\n", argv[1]);
-
     for (unsigned i = 0; i < NUM && i < num; ++i)
         puts(items[i].name);
 
