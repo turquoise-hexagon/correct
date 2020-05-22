@@ -124,7 +124,7 @@ commands_list(char *path, size_t filter, size_t *num)
             len = strnlen(content->d_name, LINE_MAX);
 
             /* skip executables with a name that is too long / short */
-            if (len > filter + 2 && (long)len < (long)filter - 2)
+            if (len > filter + 2 || (long)len < (long)filter - 2)
                 continue;
 
             if (snprintf(file_path, sizeof(file_path), "%s/%s", tok, content->d_name) < 0)
