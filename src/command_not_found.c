@@ -108,7 +108,7 @@ commands_list(char *path, size_t filter, size_t *num)
 
     size_t cur = 0;
     size_t tot = 1;
-    char **list = allocate(tot * sizeof *list);
+    char **list = allocate(tot * sizeof(*list));
 
     size_t len;
     char file_path[256];
@@ -127,17 +127,17 @@ commands_list(char *path, size_t filter, size_t *num)
             if (len > filter + 2 && (long)len < (long)filter - 2)
                 continue;
 
-            if (snprintf(file_path, sizeof file_path, "%s/%s", tok, content->d_name) < 0)
+            if (snprintf(file_path, sizeof(file_path), "%s/%s", tok, content->d_name) < 0)
                 errx(EXIT_FAILURE, "failed to build path to '%s'", content->d_name);
 
             if (access(file_path, X_OK) == 0) {
-                list[cur] = allocate(LINE_MAX * sizeof *list[cur]);
+                list[cur] = allocate(LINE_MAX * sizeof(*list[cur]));
 
                 strncpy(list[cur], content->d_name, LINE_MAX);
 
                 /* allocate more space if needed */
                 if (++cur == tot)
-                    if ((list = realloc(list, (tot *= 2) * sizeof *list)) == NULL)
+                    if ((list = realloc(list, (tot *= 2) * sizeof(*list))) == NULL)
                         errx(EXIT_FAILURE, "failed to allocate memory");
             }
         }
@@ -194,9 +194,9 @@ static void
 init_item(struct item *var, const char *name, const char *cmd)
 {
     var->dist = distance(cmd, name);
-    var->name = allocate(LINE_MAX * sizeof *var->name);
+    var->name = allocate(LINE_MAX * sizeof(*var->name));
 
-    strncpy(var->name, name, LINE_MAX * sizeof *var->name);
+    strncpy(var->name, name, LINE_MAX * sizeof(*var->name));
 }
 
 int
@@ -217,10 +217,10 @@ main(int argc, char **argv)
     char **list = commands_list(path, len, &num);
 
     /* sort it alphabetically */
-    qsort(list, num, sizeof *list, compstring);
+    qsort(list, num, sizeof(*list), compstring);
 
     /* build a list of string distances */
-    struct item *items = allocate(num * sizeof *items);
+    struct item *items = allocate(num * sizeof(*items));
 
     for (size_t i = 0; i < num; ++i) {
         init_item(&items[i], list[i], argv[1]);
@@ -231,7 +231,7 @@ main(int argc, char **argv)
     free(list);
 
     /* sort it numerically */
-    qsort(items, num, sizeof *items, compitem);
+    qsort(items, num, sizeof(*items), compitem);
 
     /* print suggestions */
     printf("no command '%s' found, did you mean :\n", argv[1]);
