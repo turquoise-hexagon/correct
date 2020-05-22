@@ -130,16 +130,18 @@ commands_list(char *path, size_t filter, size_t *num)
             if (snprintf(file_path, sizeof(file_path), "%s/%s", tok, content->d_name) < 0)
                 errx(EXIT_FAILURE, "failed to build path to '%s'", content->d_name);
 
-            if (access(file_path, X_OK) == 0) {
-                list[cur] = allocate(LINE_MAX * sizeof(*list[cur]));
+            /* filter out non executables */
+            if (access(file_path, X_OK) != 0)
+                continue;
 
-                strncpy(list[cur], content->d_name, LINE_MAX);
+            list[cur] = allocate(LINE_MAX * sizeof(*list[cur]));
 
-                /* allocate more space if needed */
-                if (++cur == tot)
-                    if ((list = realloc(list, (tot *= 2) * sizeof(*list))) == NULL)
-                        errx(EXIT_FAILURE, "failed to allocate memory");
-            }
+            strncpy(list[cur], content->d_name, LINE_MAX);
+
+            /* allocate more space if needed */
+            if (++cur == tot)
+                if ((list = realloc(list, (tot *= 2) * sizeof(*list))) == NULL)
+                    errx(EXIT_FAILURE, "failed to allocate memory");
         }
 
         close_dir(dir, tok);
