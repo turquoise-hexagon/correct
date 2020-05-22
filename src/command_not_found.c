@@ -133,7 +133,7 @@ commands_list(char *path, size_t filter, size_t *num)
             if (access(file_path, X_OK) == 0) {
                 list[cur] = allocate(LINE_MAX * sizeof *list[cur]);
 
-                strncpy(list[cur], content->d_name, LINE_MAX * sizeof *list[cur]);
+                strncpy(list[cur], content->d_name, LINE_MAX);
 
                 /* allocate more space if needed */
                 if (++cur == tot)
