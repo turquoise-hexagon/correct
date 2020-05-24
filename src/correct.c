@@ -20,7 +20,7 @@ struct item {
 /*
  * use a static array to avoid reallocating memory
  */
-static char array[LINE_MAX][LINE_MAX];
+static char array[NAME_MAX][NAME_MAX];
 
 /*
  * helper functions
@@ -46,7 +46,7 @@ compstring(const void *ptr1, const void *ptr2)
     return strncmp(
         *(char * const *)ptr1,
         *(char * const *)ptr2,
-        LINE_MAX
+        NAME_MAX
     );
 }
 
@@ -111,7 +111,7 @@ commands_list(char *path, size_t filter, size_t *num)
     char **list = allocate(tot * sizeof(*list));
 
     size_t len;
-    char file_path[256];
+    char file_path[PATH_MAX];
 
     while (tok != NULL) {
         dir = open_dir(tok);
@@ -121,7 +121,7 @@ commands_list(char *path, size_t filter, size_t *num)
             if (content->d_type == DT_DIR)
                 continue;
 
-            len = strnlen(content->d_name, LINE_MAX);
+            len = strnlen(content->d_name, NAME_MAX);
 
             /* skip executables with a name that is too long / short */
             if (len > filter + 2 || (long)len < (long)filter - 2)
@@ -134,9 +134,9 @@ commands_list(char *path, size_t filter, size_t *num)
             if (access(file_path, X_OK) != 0)
                 continue;
 
-            list[cur] = allocate(LINE_MAX * sizeof(*list[cur]));
+            list[cur] = allocate(NAME_MAX * sizeof(*list[cur]));
 
-            strncpy(list[cur], content->d_name, LINE_MAX);
+            strncpy(list[cur], content->d_name, NAME_MAX);
 
             /* allocate more space if needed */
             if (++cur == tot)
@@ -157,8 +157,8 @@ static unsigned
 distance(const char *str1, const char *str2)
 {
     /* get dimensions */
-    size_t len1 = strnlen(str1, LINE_MAX);
-    size_t len2 = strnlen(str2, LINE_MAX);
+    size_t len1 = strnlen(str1, NAME_MAX);
+    size_t len2 = strnlen(str2, NAME_MAX);
 
     /* initialize matrix */
     for (size_t i = 0; i <= len1; ++i)
@@ -196,9 +196,9 @@ static void
 init_item(struct item *var, const char *name, const char *cmd)
 {
     var->dist = distance(cmd, name);
-    var->name = allocate(LINE_MAX * sizeof(*var->name));
+    var->name = allocate(NAME_MAX * sizeof(*var->name));
 
-    strncpy(var->name, name, LINE_MAX * sizeof(*var->name));
+    strncpy(var->name, name, NAME_MAX * sizeof(*var->name));
 }
 
 int
@@ -214,7 +214,7 @@ main(int argc, char **argv)
 
     /* build a list of commands */
     size_t num;
-    size_t len = strnlen(argv[1], LINE_MAX);
+    size_t len = strnlen(argv[1], NAME_MAX);
 
     char **list = commands_list(path, len, &num);
 
