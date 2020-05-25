@@ -62,7 +62,7 @@ min3(unsigned a, unsigned b, unsigned c)
     return min2(min2(a, b), c);
 }
 
-static void *
+static inline void *
 allocate(size_t size)
 {
     void *ptr = malloc(size);
