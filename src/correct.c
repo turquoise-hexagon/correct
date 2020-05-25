@@ -107,10 +107,8 @@ build_commands_list(
     char file_path[PATH_MAX] = {0};
 
     while (path_dir != NULL) {
-        dir = opendir(path_dir);
-
         /* skip non existing directories */
-        if (dir == NULL)
+        if ((dir = opendir(path_dir)) == NULL)
             continue;
 
         while ((dir_content = readdir(dir)) != NULL) {
