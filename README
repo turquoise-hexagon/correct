@@ -1,6 +1,6 @@
 correct
 =======
-    another command-line correction program
+    suggests a number of matching commands for a string (using Levenshtein distance)
 
 usage
 -----
