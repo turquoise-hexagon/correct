@@ -5,30 +5,31 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "config.h"
 
+static void
+usage(char *name)
+{
+    fprintf(stderr, "usage : %s <string>\n", basename(name));
+
+    exit(1);
+}
+
 /*
- * small structure used to store commands by string distance
+ * small structure used to sort commands by string distance
  */
 struct item {
     char *name;
-    unsigned distance;
+    int  distance;
 };
 
 /*
  * use a static array to avoid reallocating memory all the time
  */
-static unsigned array[NAME_MAX + 1][NAME_MAX + 1];
-
-static void
-print_usage(char *program_name)
-{
-    fprintf(stderr, "usage : %s [string]\n", basename(program_name));
-
-    exit(EXIT_FAILURE);
-}
+static int array[NAME_MAX + 1][NAME_MAX + 1];
 
 /*
  * helper functions
@@ -36,8 +37,8 @@ print_usage(char *program_name)
 static inline int
 compitem(const void *ptr1, const void *ptr2)
 {
-    return (*(struct item const *)ptr1).distance
-         - (*(struct item const *)ptr2).distance;
+    return (*(struct item const *)ptr1).distance -
+           (*(struct item const *)ptr2).distance;
 }
 
 static inline int
@@ -50,14 +51,14 @@ compstring(const void *ptr1, const void *ptr2)
     );
 }
 
-static inline unsigned
-min2(unsigned a, unsigned b)
+static inline int
+min2(int a, int b)
 {
     return a < b ? a : b;
 }
 
-static inline unsigned
-min3(unsigned a, unsigned b, unsigned c)
+static inline int
+min3(int a, int b, int c)
 {
     return min2(min2(a, b), c);
 }
@@ -65,10 +66,10 @@ min3(unsigned a, unsigned b, unsigned c)
 static inline void *
 allocate(size_t size)
 {
-    void *ptr = malloc(size);
+    void *ptr;
 
-    if (ptr == NULL)
-        errx(EXIT_FAILURE, "failed to allocate memory");
+    if ((ptr = malloc(size)) == NULL)
+        errx(1, "failed to allocate memory");
 
     return ptr;
 }
@@ -77,34 +78,33 @@ static void
 close_dir(const char *path, DIR *dir)
 {
     if (closedir(dir) != 0)
-        errx(EXIT_FAILURE, "failed to close '%s'", path);
+        errx(1, "failed to close '%s'", path);
 }
 
 /*
  * main functions
  */
 static char **
-build_commands_list(
-    char *user_path,
-    size_t *number_commands,
-    size_t length_filter
-)
+build_list_commands(char *user_path, size_t *number_commands,
+                       size_t length_filter)
 {
-    /* split path */
-    char *path_dir = strtok(user_path, ":");
+    /* split path on ':' */
+    char *path_dir;
 
-    if (path_dir == NULL)
-        errx(EXIT_FAILURE, "failed to parse '$PATH'");
+    if ((path_dir = strtok(user_path, ":")) == NULL)
+        errx(1, "failed to parse '$PATH'");
 
     DIR *dir;
     struct dirent *dir_content;
 
+    size_t length;
     size_t number_lines = 0;
     size_t allocated_lines = 1;
-    char **commands_list = allocate(allocated_lines * sizeof(*commands_list));
 
-    size_t length;
+    char **list_commands;
     char file_path[PATH_MAX] = {0};
+
+    list_commands = allocate(allocated_lines * sizeof(*list_commands));
 
     while (path_dir != NULL) {
         /* skip non existing directories */
@@ -112,33 +112,34 @@ build_commands_list(
             continue;
 
         while ((dir_content = readdir(dir)) != NULL) {
-            /* skip directories */
+            /* skip sub directories */
             if (dir_content->d_type == DT_DIR)
                 continue;
 
             length = strnlen(dir_content->d_name, NAME_MAX + 1);
 
-            /* skip files with a name too long / short */
-            if (length > length_filter + 2 || (long)length < (long)length_filter - 2)
+            /* skip files with names too long / too short */
+            if (length > length_filter + 2 ||
+                   (long)length < (long)length_filter - 2)
                 continue;
 
             if (snprintf(file_path, sizeof(file_path),
-                    "%s/%s", path_dir, dir_content->d_name) < 0)
-                errx(EXIT_FAILURE, "failed to build path to '%s'", dir_content->d_name);
+                   "%s/%s", path_dir, dir_content->d_name) < 0)
+                errx(1, "failed to build path to '%s'", dir_content->d_name);
 
             /* skip non executables */
             if (access(file_path, X_OK) != 0)
                 continue;
 
-            commands_list[number_lines] = allocate((NAME_MAX + 1)
-                * sizeof(*commands_list[number_lines]));
+            list_commands[number_lines] = allocate((NAME_MAX + 1) *
+                sizeof(*list_commands[number_lines]));
 
-            strncpy(commands_list[number_lines], dir_content->d_name, NAME_MAX + 1);
+            strncpy(list_commands[number_lines], dir_content->d_name, NAME_MAX + 1);
 
             if (++number_lines == allocated_lines)
-                if ((commands_list = realloc(commands_list,
-                        (allocated_lines *= 2) * sizeof(*commands_list))) == NULL)
-                    errx(EXIT_FAILURE, "failed to allocate memory");
+                if ((list_commands = realloc(list_commands,
+                        (allocated_lines *= 2) * sizeof(*list_commands))) == NULL)
+                    errx(1, "failed to allocate memory");
         }
 
         close_dir(path_dir, dir);
@@ -146,29 +147,32 @@ build_commands_list(
     }
 
     *number_commands = number_lines;
-    return commands_list;
+    return list_commands;
 }
 
 /*
- * function translated from pseudocode from :
+ * function translates from pseudocode from :
  * https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
  */
-static unsigned
+static int
 string_distance(const char *str1, const char *str2)
 {
-    /* get string dimensions */
-    size_t length1 = strnlen(str1, NAME_MAX + 1);
-    size_t length2 = strnlen(str2, NAME_MAX + 1);
+    /* get strings dimensions */
+    size_t length1;
+    size_t length2;
+
+    length1 = strnlen(str1, NAME_MAX + 1);
+    length2 = strnlen(str2, NAME_MAX + 1);
 
     /* initialize array */
     for (size_t i = 0; i <= length1; ++i)
         memset(array[i], 0, length2 + 1);
 
-    for (size_t i = 0; i <= length1; ++i) array[i][0] = i;
-    for (size_t i = 0; i <= length2; ++i) array[0][i] = i;
+    for (size_t i = 0; i <= length1; ++i) array[i][0] = (int)i;
+    for (size_t i = 0; i <= length2; ++i) array[0][i] = (int)i;
 
     /* compute string distance */
-    unsigned cost;
+    unsigned short cost = 0;
 
     for (size_t i = 1; i <= length1; ++i)
         for (size_t j = 1; j <= length2; ++j) {
@@ -177,29 +181,22 @@ string_distance(const char *str1, const char *str2)
             array[i][j] = min3(
                 array[i - 1][    j] + 1,
                 array[    i][j - 1] + 1,
-                array[i - 1][j - 1] + cost
-            );
+                array[i - 1][j - 1] + cost);
 
-            if (
-                i > 1 && j > 1
+            if (i > 1 && j > 1
                 && str1[i - 1] == str2[j - 2]
-                && str2[j - 1] == str1[i - 2]
-               )
+                && str2[j - 1] == str1[i - 2])
                 array[i][j] = min2(
                     array[    i][    j],
-                    array[i - 2][j - 2] + 1
-                );
+                    array[i - 2][j - 2] + 1);
         }
 
     return array[length1][length2];
 }
 
 static void
-init_item(
-    struct item *var,
-    const char *name,
-    const char *str
-)
+init_item(struct item *var, const char *name,
+              const char *str)
 {
     var->distance = string_distance(str, name);
     var->name = allocate((NAME_MAX + 1) * sizeof(*var->name));
@@ -211,46 +208,53 @@ int
 main(int argc, char **argv)
 {
     if (argc != 2)
-        print_usage(argv[0]);
+        usage(argv[0]);
 
-    char *user_path = getenv("PATH");
+    char *user_path;
 
-    if (user_path == NULL)
-        errx(EXIT_FAILURE, "failed to get '$PATH'");
+    if ((user_path = getenv("PATH")) == NULL)
+        errx(1, "failed to get '$PATH'");
 
-    /* build a list of commands */
+    /* build a list of commands*/
+    char **list_commands;
+    size_t length_filter;
     size_t number_commands;
-    size_t length_filter = strnlen(argv[1], NAME_MAX + 1);
 
-    char **commands = build_commands_list(user_path,
+    length_filter = strnlen(argv[1], NAME_MAX + 1);
+
+    list_commands = build_list_commands(user_path,
         &number_commands, length_filter);
 
     /* sort list of commands alphabetically */
-    qsort(commands, number_commands, sizeof(*commands), compstring);
+    qsort(list_commands, number_commands,
+        sizeof(*list_commands), compstring);
 
-    /* build a list of string distances */
-    struct item *distances = allocate(number_commands * sizeof(*distances));
+    /* build a list of corresponding string distances */
+    struct item *list_distances;
+
+    list_distances = allocate(number_commands * sizeof(*list_distances));
 
     for (size_t i = 0; i < number_commands; ++i) {
-        init_item(&distances[i], commands[i], argv[1]);
+        init_item(&list_distances[i], list_commands[i], argv[1]);
 
-        free(commands[i]);
+        free(list_commands[i]);
     }
 
-    free(commands);
+    free(list_commands);
 
-    /* sort it numerically */
-    qsort(distances, number_commands, sizeof(*distances), compitem);
+    /* sort list of string distances numerically */
+    qsort(list_distances, number_commands,
+        sizeof(*list_distances), compitem);
 
     /* print suggestions */
     for (size_t i = 0; i < NUM && i < number_commands; ++i)
-        puts(distances[i].name);
+        puts(list_distances[i].name);
 
     /* free remaining memory */
     for (size_t i = 0; i < number_commands; ++i)
-        free(distances[i].name);
+        free(list_distances[i].name);
 
-    free(distances);
+    free(list_distances);
 
-    return EXIT_SUCCESS;
+    return 0;
 }
