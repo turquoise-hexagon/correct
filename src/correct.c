@@ -36,8 +36,8 @@ print_usage(char *program_name)
 static inline int
 compitem(const void *ptr1, const void *ptr2)
 {
-    return (int)((*(struct item const *)ptr1).distance
-               - (*(struct item const *)ptr2).distance);
+    return (*(struct item const *)ptr1).distance
+         - (*(struct item const *)ptr2).distance;
 }
 
 static inline int
@@ -166,8 +166,8 @@ string_distance(const char *str1, const char *str2)
     for (size_t i = 0; i <= length1; ++i)
         memset(array[i], 0, length2 + 1);
 
-    for (size_t i = 0; i <= length1; ++i) array[i][0] = (unsigned)i;
-    for (size_t i = 0; i <= length2; ++i) array[0][i] = (unsigned)i;
+    for (size_t i = 0; i <= length1; ++i) array[i][0] = i;
+    for (size_t i = 0; i <= length2; ++i) array[0][i] = i;
 
     /* compute string distance */
     unsigned cost;
