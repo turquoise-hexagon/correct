@@ -36,8 +36,8 @@ print_usage(char *program_name)
 static inline int
 compitem(const void *ptr1, const void *ptr2)
 {
-    return (*(struct item *)ptr1).distance
-         - (*(struct item *)ptr2).distance;
+    return (int)((*(struct item const *)ptr1).distance
+               - (*(struct item const *)ptr2).distance);
 }
 
 static inline int
@@ -124,7 +124,7 @@ build_commands_list(
             if (length > length_filter + 2 || (long)length < (long)length_filter - 2)
                 continue;
 
-            if (snprintf(file_path, sizeof(file_path), \
+            if (snprintf(file_path, sizeof(file_path),
                     "%s/%s", path_dir, dir_content->d_name) < 0)
                 errx(EXIT_FAILURE, "failed to build path to '%s'", dir_content->d_name);
 
@@ -132,13 +132,13 @@ build_commands_list(
             if (access(file_path, X_OK) != 0)
                 continue;
 
-            commands_list[number_lines] = allocate((NAME_MAX + 1) \
+            commands_list[number_lines] = allocate((NAME_MAX + 1)
                 * sizeof(*commands_list[number_lines]));
 
             strncpy(commands_list[number_lines], dir_content->d_name, NAME_MAX + 1);
 
             if (++number_lines == allocated_lines)
-                if ((commands_list = realloc(commands_list, \
+                if ((commands_list = realloc(commands_list,
                         (allocated_lines *= 2) * sizeof(*commands_list))) == NULL)
                     errx(EXIT_FAILURE, "failed to allocate memory");
         }
@@ -166,8 +166,8 @@ string_distance(const char *str1, const char *str2)
     for (size_t i = 0; i <= length1; ++i)
         memset(array[i], 0, length2 + 1);
 
-    for (size_t i = 0; i <= length1; ++i) array[i][0] = i;
-    for (size_t i = 0; i <= length2; ++i) array[0][i] = i;
+    for (size_t i = 0; i <= length1; ++i) array[i][0] = (unsigned)i;
+    for (size_t i = 0; i <= length2; ++i) array[0][i] = (unsigned)i;
 
     /* compute string distance */
     unsigned cost;
@@ -224,7 +224,7 @@ main(int argc, char **argv)
     size_t number_commands;
     size_t length_filter = strnlen(argv[1], NAME_MAX + 1);
 
-    char **commands = build_commands_list(user_path, \
+    char **commands = build_commands_list(user_path,
         &number_commands, length_filter);
 
     /* sort list of commands alphabetically */

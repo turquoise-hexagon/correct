@@ -1,4 +1,4 @@
 /*
  * number of items printed
  */
-const unsigned NUM = 5;
+static const unsigned NUM = 5;
