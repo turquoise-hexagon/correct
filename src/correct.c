@@ -200,10 +200,10 @@ static void
 init_item(
     struct item *var,
     const char *name,
-    const char *string
+    const char *str
 )
 {
-    var->distance = string_distance(string, name);
+    var->distance = string_distance(str, name);
     var->name = allocate((NAME_MAX + 1) * sizeof(*var->name));
 
     strncpy(var->name, name, NAME_MAX + 1);
