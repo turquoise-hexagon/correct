@@ -142,7 +142,7 @@ build_commands_list(
                         (allocated_lines *= 2) * sizeof(*commands_list))) == NULL)
                     errx(EXIT_FAILURE, "failed to allocate memory");
         }
-        
+
         close_dir(path_dir, dir);
         path_dir = strtok(NULL, ":");
     }
