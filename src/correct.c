@@ -125,7 +125,7 @@ build_commands_list(
                 continue;
 
             if (snprintf(file_path, sizeof(file_path), \
-                        "%s/%s", path_dir, dir_content->d_name) < 0)
+                    "%s/%s", path_dir, dir_content->d_name) < 0)
                 errx(EXIT_FAILURE, "failed to build path to '%s'", dir_content->d_name);
 
             /* skip non executables */
@@ -133,13 +133,13 @@ build_commands_list(
                 continue;
 
             commands_list[number_lines] = allocate((NAME_MAX + 1) \
-                    * sizeof(*commands_list[number_lines]));
+                * sizeof(*commands_list[number_lines]));
 
             strncpy(commands_list[number_lines], dir_content->d_name, NAME_MAX + 1);
 
             if (++number_lines == allocated_lines)
                 if ((commands_list = realloc(commands_list, \
-                                (allocated_lines *= 2) * sizeof(*commands_list))) == NULL)
+                        (allocated_lines *= 2) * sizeof(*commands_list))) == NULL)
                     errx(EXIT_FAILURE, "failed to allocate memory");
         }
         
@@ -225,7 +225,7 @@ main(int argc, char **argv)
     size_t length_filter = strnlen(argv[1], NAME_MAX + 1);
 
     char **commands = build_commands_list(user_path, \
-            &number_commands, length_filter);
+        &number_commands, length_filter);
 
     /* sort list of commands alphabetically */
     qsort(commands, number_commands, sizeof(*commands), compstring);
