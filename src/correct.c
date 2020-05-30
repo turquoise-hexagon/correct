@@ -151,7 +151,7 @@ build_list_commands(char *user_path, size_t *number_commands,
 }
 
 /*
- * function translates from pseudocode from :
+ * function translated from pseudocode from :
  * https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
  */
 static int
