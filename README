@@ -5,17 +5,16 @@ correct
 usage
 -----
     * program
-        $ ./make.sh
+        $ make
         $ bin/correct
     * documentation
-        $ cd doc
-        $ ./make.sh
-        $ man ./correct.1.gz
+        $ make
+        $ man doc/correct.1.gz
     * examples
         $ . etc/$example
 
 depends on
 ----------
-    * bash
     * docutils
     * gcc
+    * make
