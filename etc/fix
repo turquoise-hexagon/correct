@@ -7,8 +7,8 @@ command_not_found_handle() {
 fix() {
     local old new input
 
-    read -r old < /tmp/fix
-    read -r new < <(correct "$old")
+    read -r old <   /tmp/fix
+    read -r new <<< $(correct "$old")
 
     read -rp "did you mean '$new' <y|n> ? " input >&2
 
