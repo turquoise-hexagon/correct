@@ -4,13 +4,14 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdnoreturn.h>
 #include <string.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "config.h"
 
-static void
+static noreturn void
 usage(char *name)
 {
     fprintf(stderr, "usage : %s <string>\n", basename(name));
