@@ -12,7 +12,7 @@ give command suggestions for a given string
 
 synopsis
 --------
-| correct `<string>`
+| correct `<command>`
 
 description
 -----------
