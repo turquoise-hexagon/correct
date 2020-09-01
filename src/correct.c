@@ -160,8 +160,8 @@ get_path_dirs(size_t *size)
                 dirs = reallocate(dirs, (allocated = allocated * 3 / 2) * sizeof(*dirs));
 
             tok = strtok(NULL, ":");
-        } 
-    
+        }
+
         *size = assigned;
     }
 
