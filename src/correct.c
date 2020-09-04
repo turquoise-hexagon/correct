@@ -266,7 +266,7 @@ cleanup_list_commands(struct item *list, size_t size)
     free(list);
 }
 
-static inline int
+static int
 compare_item(const void *ptr1, const void *ptr2)
 {
     int comp;
