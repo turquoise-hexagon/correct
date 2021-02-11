@@ -140,26 +140,18 @@ get_path_dirs(size_t *size)
             exit(1);
         }
 
-        char *tok;
-
-        if (! (tok = strtok(path, ":"))) {
-            fprintf(stderr, "error : failed to parse '$PATH'\n");
-
-            exit(1);
-        }
-
         size_t allocated = 2;
         size_t assigned  = 0;
 
         dirs = allocate(allocated * sizeof(*dirs));
 
-        while (tok) {
-            dirs[assigned] = copy_string(tok);
+        char *str;
+
+        while ((str = strsep(&path, ":"))) {
+            dirs[assigned] = copy_string(str);
 
             if (++assigned == allocated)
                 dirs = reallocate(dirs, (allocated = allocated * 3 / 2) * sizeof(*dirs));
-
-            tok = strtok(NULL, ":");
         }
 
         *size = assigned;
