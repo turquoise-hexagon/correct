@@ -107,24 +107,6 @@ reallocate(void *old, size_t size)
     return new;
 }
 
-static char *
-copy_string(const char *str)
-{
-    char *cpy;
-
-    {
-        size_t len;
-
-        len = strnlen(str, PATH_MAX);
-        cpy = allocate((len + 1) * sizeof(*cpy));
-        strncpy(cpy, str, len);
-
-        /* fix string */
-        cpy[len] = 0;
-    }
-
-    return cpy;
-}
 
 static char **
 get_path_dirs(size_t *size)
@@ -148,7 +130,7 @@ get_path_dirs(size_t *size)
         char *str;
 
         while ((str = strsep(&path, ":"))) {
-            dirs[assigned] = copy_string(str);
+            dirs[assigned] = strndup(str, strnlen(str, PATH_MAX));
 
             if (++assigned == allocated)
                 dirs = reallocate(dirs, (allocated = allocated * 3 / 2) * sizeof(*dirs));
@@ -232,7 +214,7 @@ get_list_commands(size_t *size, const char *command)
                 if (access(path, X_OK) != 0)
                     continue;
 
-                list[assigned].command = copy_string(content->d_name);
+                list[assigned].command = strndup(content->d_name, strnlen(content->d_name, PATH_MAX));
                 list[assigned].distance = string_distance(content->d_name, command);
 
                 if (++assigned == allocated)
