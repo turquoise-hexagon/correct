@@ -9,6 +9,12 @@
 
 static const size_t NUM = 5;
 
+#define ERROR(code, ...) {        \
+    fprintf(stderr, __VA_ARGS__); \
+                                  \
+    exit(code);                   \
+}
+
 struct item {
     int distance;
     char *command;
@@ -74,9 +80,7 @@ string_distance(const char *str1, const char *str2)
 static noreturn void
 usage(char *name)
 {
-    fprintf(stderr, "usage : %s <command>\n", basename(name));
-
-    exit(1);
+    ERROR(1, "usage : %s <command>\n", basename(name));
 }
 
 static void *
@@ -84,11 +88,8 @@ allocate(size_t size)
 {
     void *ptr;
 
-    if (! (ptr = malloc(size))) {
-        fprintf(stderr, "error : failed to allocate memory\n");
-
-        exit(1);
-    }
+    if (! (ptr = malloc(size)))
+        ERROR(1, "error : failed to allocate '%lu' bytes of memory\n", size);
 
     return ptr;
 }
@@ -98,15 +99,28 @@ reallocate(void *old, size_t size)
 {
     void *new;
 
-    if (! (new = realloc(old, size))) {
-        fprintf(stderr, "error : failed to reallocate memory\n");
-
-        exit(1);
-    }
+    if (! (new = realloc(old, size)))
+        ERROR(1, "error : failed to reallocate '%lu' bytes of memory\n", size);
 
     return new;
 }
 
+static char *
+copy_input(const char *str)
+{
+    char *cpy;
+
+    {
+        size_t len;
+
+        len = strnlen(str, PATH_MAX);
+
+        if (! (cpy = strndup(str, len)))
+            ERROR(1, "error : failed to duplicate string\n");
+    }
+    
+    return cpy;
+}
 
 static char **
 get_path_dirs(size_t *size)
@@ -116,11 +130,8 @@ get_path_dirs(size_t *size)
     {
         char *path;
 
-        if (! (path = getenv("PATH"))) {
-            fprintf(stderr, "error : failed to get '$PATH' from env\n");
-
-            exit(1);
-        }
+        if (! (path = getenv("PATH")))
+            ERROR(1, "error : failed to get '$PATH' from env\n");
 
         size_t allocated = 2;
         size_t assigned  = 0;
@@ -130,7 +141,7 @@ get_path_dirs(size_t *size)
         char *str;
 
         while ((str = strsep(&path, ":"))) {
-            dirs[assigned] = strndup(str, strnlen(str, PATH_MAX));
+            dirs[assigned] = copy_input(str);
 
             if (++assigned == allocated)
                 dirs = reallocate(dirs, (allocated = allocated * 3 / 2) * sizeof(*dirs));
@@ -154,11 +165,8 @@ cleanup_path_dirs(char **dirs, size_t size)
 static void
 close_dir(const char *path, DIR *dir)
 {
-    if (closedir(dir) != 0) {
-        fprintf(stderr, "error : failed to close '%s'\n", path);
-
-        exit(1);
-    }
+    if (closedir(dir) != 0)
+        ERROR(1, "error : failed to close '%s'\n", path);
 }
 
 static struct item *
@@ -214,7 +222,7 @@ get_list_commands(size_t *size, const char *command)
                 if (access(path, X_OK) != 0)
                     continue;
 
-                list[assigned].command = strndup(content->d_name, strnlen(content->d_name, PATH_MAX));
+                list[assigned].command = copy_input(content->d_name);
                 list[assigned].distance = string_distance(content->d_name, command);
 
                 if (++assigned == allocated)
