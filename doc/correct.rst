@@ -2,8 +2,8 @@
 correct
 -------
 
-give command suggestions for a given string
-===========================================
+give correction suggestions for a given string
+==============================================
 
 :date: May 2020
 :version: 0.0
@@ -12,21 +12,21 @@ give command suggestions for a given string
 
 synopsis
 --------
-| correct `<command>`
+`<list>` | correct `<string>`
 
 description
 -----------
-correct tries to correct a string to a valid command by finding the closest match in the user's $PATH
+correct tries to correct a string by finding the closest match in a list of strings provided via stdin
 
-it outputs a list of commands, one per line
+it outputs a list of the best matches, one per line
 
 example
 -------
 ::
 
-    $ correct makee
+    $ compgen -c | correct take
     make
+    rake
+    case
     cmake
-    faked
-    makedb
-    qmake
+    date

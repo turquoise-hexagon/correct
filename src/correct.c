@@ -1,30 +1,30 @@
-#include <dirent.h>
 #include <libgen.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdnoreturn.h>
 #include <string.h>
-#include <unistd.h>
 
-static const size_t NUM = 5;
+/* number of suggestions to print */
+static const unsigned NUM = 5;
 
-#define ERROR(code, ...) {        \
+#define LEVENSHTEIN_MAX 1024
+
+#define ERROR(status, ...) {      \
     fprintf(stderr, __VA_ARGS__); \
                                   \
-    exit(code);                   \
+    exit(status);                 \
 }
 
 struct item {
-    int distance;
-    char *command;
+    int distance; char line[LINE_MAX];
 };
 
-/*
- * declare array that will be used to compute string
- * distances later on (instead of allocating every time)
- */
-static int array[NAME_MAX + 1][NAME_MAX + 1];
+static noreturn void
+usage(char *name)
+{
+    ERROR(1, "usage : <list> | %s <string>\n", basename(name));
+}
 
 static inline int
 min2(int a, int b)
@@ -35,31 +35,27 @@ min2(int a, int b)
 static inline int
 min3(int a, int b, int c)
 {
-    return min2(min2(a, b), c);
+    return min2(a, min2(b, c));
 }
 
-/*
- * translated from pseudocode found here :
- * https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
- */
+/* https://en.wikipedia.org/wiki/damerau%e2%80%93levenshtein_distance */
 static int
-string_distance(const char *str1, const char *str2)
+string_distance(const char *a, const char *b)
 {
-    size_t len1;
-    size_t len2;
+    static int array[LEVENSHTEIN_MAX + 1][LEVENSHTEIN_MAX + 1] = {{0}};
 
-    len1 = strnlen(str1, NAME_MAX + 1);
-    len2 = strnlen(str2, NAME_MAX + 1);
+    size_t len_a;
+    size_t len_b;
 
-    for (size_t i = 0; i <= len1; ++i)
-        memset(array[i], 0, len2 + 1);
+    len_a = strnlen(a, LEVENSHTEIN_MAX);
+    len_b = strnlen(b, LEVENSHTEIN_MAX);
 
-    for (size_t i = 0; i <= len1; ++i) array[i][0] = (int)i;
-    for (size_t i = 0; i <= len2; ++i) array[0][i] = (int)i;
+    for (size_t i = 0; i <= len_a; ++i) array[i][0] = (int)i;
+    for (size_t i = 0; i <= len_b; ++i) array[0][i] = (int)i;
 
-    for (size_t i = 1; i <= len1; ++i)
-        for (size_t j = 1; j <= len2; ++j) {
-            unsigned short cost = str1[i - 1] == str2[j - 1] ? 0 : 1;
+    for (size_t i = 1; i <= len_a; ++i)
+        for (size_t j = 1; j <= len_b; ++j) {
+            int cost = a[i - 1] == b[j - 1] ? 0 : 1;
 
             array[i][j] = min3(
                 array[i - 1][    j] + 1,
@@ -67,203 +63,65 @@ string_distance(const char *str1, const char *str2)
                 array[i - 1][j - 1] + cost);
 
             if (i > 1 && j > 1
-                && str1[i - 1] == str2[j - 2]
-                && str2[j - 1] == str1[i - 2])
+                && a[i - 1] == b[j - 2]
+                && a[i - 2] == b[j - 1])
                 array[i][j] = min2(
                     array[    i][    j],
                     array[i - 2][j - 2] + 1);
         }
 
-    return array[len1][len2];
-}
-
-static noreturn void
-usage(char *name)
-{
-    ERROR(1, "usage : %s <command>\n", basename(name));
-}
-
-static void *
-allocate(size_t size)
-{
-    void *ptr;
-
-    if (! (ptr = malloc(size)))
-        ERROR(1, "error : failed to allocate '%lu' bytes of memory\n", size);
-
-    return ptr;
-}
-
-static void *
-reallocate(void *old, size_t size)
-{
-    void *new;
-
-    if (! (new = realloc(old, size)))
-        ERROR(1, "error : failed to reallocate '%lu' bytes of memory\n", size);
-
-    return new;
-}
-
-static char *
-copy_input(const char *str)
-{
-    char *cpy;
-
-    {
-        size_t len;
-
-        len = strnlen(str, PATH_MAX);
-
-        if (! (cpy = strndup(str, len)))
-            ERROR(1, "error : failed to duplicate string\n");
-    }
-    
-    return cpy;
-}
-
-static char **
-get_path_dirs(size_t *size)
-{
-    char **dirs;
-
-    {
-        char *path;
-
-        if (! (path = getenv("PATH")))
-            ERROR(1, "error : failed to get '$PATH' from env\n");
-
-        size_t allocated = 2;
-        size_t assigned  = 0;
-
-        dirs = allocate(allocated * sizeof(*dirs));
-
-        char *str;
-
-        while ((str = strsep(&path, ":"))) {
-            dirs[assigned] = copy_input(str);
-
-            if (++assigned == allocated)
-                dirs = reallocate(dirs, (allocated = allocated * 3 / 2) * sizeof(*dirs));
-        }
-
-        *size = assigned;
-    }
-
-    return dirs;
-}
-
-static void
-cleanup_path_dirs(char **dirs, size_t size)
-{
-    for (size_t i = 0; i < size; ++i)
-        free(dirs[i]);
-
-    free(dirs);
-}
-
-static void
-close_dir(const char *path, DIR *dir)
-{
-    if (closedir(dir) != 0)
-        ERROR(1, "error : failed to close '%s'\n", path);
+    return array[len_a][len_b];
 }
 
 static struct item *
-get_list_commands(size_t *size, const char *command)
+read_input(size_t *size)
 {
-    struct item *list;
+    struct item *input;
 
     {
-        size_t filter;
+        size_t alloc  = 2;
+        size_t assign = 0;
 
-        filter = strnlen(command, NAME_MAX);
+        if (!(input = malloc(alloc * sizeof(*input))))
+            return NULL;
 
-        size_t allocated = 2;
-        size_t assigned  = 0;
+        for (;;) {
+            struct item *tmp = &input[assign];
 
-        list = allocate(allocated * sizeof(*list));
+            if (!fgets(tmp->line, sizeof(tmp->line), stdin))
+                break;
 
-        char **path_dirs;
-        size_t path_size;
+            /* fix string */
+            tmp->line[strnlen(tmp->line, sizeof(tmp->line)) - 1] = 0;
 
-        path_dirs = get_path_dirs(&path_size);
-
-        char path[PATH_MAX] = {0};
-
-        for (size_t i = 0; i < path_size; ++i) {
-            DIR *dir;
-            struct dirent *content;
-
-            /* skip directories that we can't open */
-            if (! (dir = opendir(path_dirs[i])))
-                continue;
-
-            while ((content = readdir(dir))) {
-                /* skip sub-directories */
-                if (content->d_type == DT_DIR)
-                    continue;
-
-                size_t len;
-
-                len = strnlen(content->d_name, NAME_MAX + 1);
-
-                /* skip files with names too long / short */
-                if (len > filter + 2 || (long)len < (long)filter - 2)
-                    continue;
-
-                if (snprintf(path, PATH_MAX, "%s/%s", path_dirs[i], content->d_name) < 0) {
-                    fprintf(stderr, "error : failed to build path to '%s'\n", content->d_name);
-
-                    exit(1);
-                }
-
-                /* skip files that aren't executable */
-                if (access(path, X_OK) != 0)
-                    continue;
-
-                list[assigned].command = copy_input(content->d_name);
-                list[assigned].distance = string_distance(content->d_name, command);
-
-                if (++assigned == allocated)
-                    list = reallocate(list, (allocated = allocated * 3 / 2) * sizeof(*list));
-            }
-
-            close_dir(path_dirs[i], dir);
+            if (++assign == alloc)
+                if (!(input = realloc(input, (alloc = alloc * 3 / 2) * sizeof(*input))))
+                    return NULL;
         }
 
-        *size = assigned;
-        cleanup_path_dirs(path_dirs, path_size);
+        *size = assign;
     }
 
-    return list;
-}
-
-static void
-cleanup_list_commands(struct item *list, size_t size)
-{
-    for (size_t i = 0; i < size; ++i)
-        free(list[i].command);
-
-    free(list);
+    return input;
 }
 
 static int
-compare_item(const void *ptr1, const void *ptr2)
+comparison(const void *a, const void *b)
 {
-    int comp;
+    const struct item *tmp_a = &(*(struct item const *)a);
+    const struct item *tmp_b = &(*(struct item const *)b);
 
     /* sort by string distance first */
-    comp = (*(struct item const *)ptr1).distance -
-           (*(struct item const *)ptr2).distance;
+    int comp = tmp_a->distance -
+               tmp_b->distance;
 
-    /* sort by alphabetical order second */
+    /* sort alphabetically second */
     return comp != 0
         ? comp
         : strncmp(
-            (*(struct item const *)ptr1).command,
-            (*(struct item const *)ptr2).command,
-            NAME_MAX + 1);
+            tmp_a->line,
+            tmp_b->line,
+            sizeof(tmp_a->line));
 }
 
 int
@@ -273,16 +131,25 @@ main(int argc, char **argv)
         usage(argv[0]);
 
     size_t size;
-    struct item *list;
+    struct item *input;
 
-    list = get_list_commands(&size, argv[1]);
+    if (!(input = read_input(&size)))
+        ERROR(1, "error : failed to acquire input from stdin\n");
 
-    qsort(list, size, sizeof(*list), compare_item);
+    for (size_t i = 0; i < size; ++i) {
+        struct item *tmp = &input[i];
 
-    for (size_t i = 0; i < NUM && i < size; ++i)
-        puts(list[i].command);
+        tmp->distance = string_distance(argv[1], tmp->line);
+    }
 
-    cleanup_list_commands(list, size);
+    qsort(input, size, sizeof(*input), comparison);
 
+    for (size_t i = 0; i < NUM && i < size; ++i) {
+        struct item *tmp = &input[i];
+
+        puts(tmp->line);
+    }
+
+    free(input);
     return 0;
 }
