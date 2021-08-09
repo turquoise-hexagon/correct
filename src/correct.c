@@ -5,19 +5,21 @@
 #include <stdnoreturn.h>
 #include <string.h>
 
-/* number of suggestions to print */
-static const unsigned NUM = 5;
-
-#define LEVENSHTEIN_MAX 1024
-
 #define ERROR(status, ...) {      \
     fprintf(stderr, __VA_ARGS__); \
                                   \
     exit(status);                 \
 }
 
+#define LEVENSHTEIN_MAX 1024
+
+/* number of suggestions to print */
+static const size_t NB_CANDIDATES = 5;
+
 struct item {
-    int distance; char line[LINE_MAX];
+    char *str;
+    size_t len;
+    int dist;
 };
 
 static noreturn void
@@ -40,41 +42,63 @@ min3(int a, int b, int c)
 
 /* https://en.wikipedia.org/wiki/damerau%e2%80%93levenshtein_distance */
 static int
-string_distance(const char *a, const char *b)
+distance(struct item a, struct item b)
 {
     static int array[LEVENSHTEIN_MAX + 1][LEVENSHTEIN_MAX + 1] = {{0}};
 
-    size_t len_a;
-    size_t len_b;
-
-    len_a = strnlen(a, LEVENSHTEIN_MAX);
-    len_b = strnlen(b, LEVENSHTEIN_MAX);
+    size_t len_a = a.len < LEVENSHTEIN_MAX ? a.len : LEVENSHTEIN_MAX;
+    size_t len_b = b.len < LEVENSHTEIN_MAX ? b.len : LEVENSHTEIN_MAX;
 
     for (size_t i = 0; i <= len_a; ++i) array[i][0] = (int)i;
     for (size_t i = 0; i <= len_b; ++i) array[0][i] = (int)i;
 
     for (size_t i = 1; i <= len_a; ++i)
         for (size_t j = 1; j <= len_b; ++j) {
-            int cost = a[i - 1] == b[j - 1] ? 0 : 1;
+            int cost = a.str[i - 1] != b.str[j - 1];
 
             array[i][j] = min3(
-                array[i - 1][    j] + 1,
-                array[    i][j - 1] + 1,
-                array[i - 1][j - 1] + cost);
+                array[i - 1][j    ] + 1,
+                array[i    ][j - 1] + 1,
+                array[i - 1][j - 1] + cost
+            );
 
             if (i > 1 && j > 1
-                && a[i - 1] == b[j - 2]
-                && a[i - 2] == b[j - 1])
+                && a.str[i - 1] == b.str[j - 2]
+                && a.str[i - 2] == b.str[j - 1]
+            )
                 array[i][j] = min2(
-                    array[    i][    j],
-                    array[i - 2][j - 2] + 1);
+                    array[i    ][j    ],
+                    array[i - 2][j - 2] + 1
+                );
         }
 
     return array[len_a][len_b];
 }
 
+static int
+compare(const void *a, const void *b)
+{
+    const struct item *ptr_a = &(*(struct item const *)a);
+    const struct item *ptr_b = &(*(struct item const *)b);
+
+    /* sort by string distance first */
+    int comp = ptr_a->dist -
+               ptr_b->dist;
+
+    /* sort alphabetically second */
+    return comp != 0
+        ? comp
+        : strncmp(
+            ptr_a->str,
+            ptr_b->str,
+            ptr_a->len > ptr_b->len
+                ? ptr_a->len
+                : ptr_b->len
+        );
+}
+
 static struct item *
-read_input(size_t *size)
+get_input_list(struct item arg, size_t *len)
 {
     struct item *input;
 
@@ -83,45 +107,40 @@ read_input(size_t *size)
         size_t assign = 0;
 
         if (!(input = malloc(alloc * sizeof(*input))))
-            return NULL;
+            ERROR(1, "error : failed to allocate '%lu' bytes of memory\n",
+                alloc * sizeof(*input));
 
-        for (;;) {
-            struct item *tmp = &input[assign];
+        char buf[LINE_MAX] = {0};
 
-            if (!fgets(tmp->line, sizeof(tmp->line), stdin))
-                break;
+        while (fgets(buf, sizeof(buf), stdin)) {
+            struct item *cur = &input[assign];
 
-            /* fix string */
-            tmp->line[strnlen(tmp->line, sizeof(tmp->line)) - 1] = 0;
+            {
+                cur->len = strnlen(buf, sizeof(buf)) - 1;
 
-            if (++assign == alloc)
-                if (!(input = realloc(input, (alloc = alloc * 3 / 2) * sizeof(*input))))
-                    return NULL;
+                /* fix string */
+                buf[cur->len] = 0;
+
+                if (!(cur->str = strndup(buf, cur->len)))
+                    ERROR(1, "error : failed to copy string of length '%lu'\n", cur->len);
+
+                cur->dist = distance(arg, *cur); ++assign;
+            }
+
+            /* reallocate buffer if necessary */
+            if (assign == alloc) {
+                alloc = alloc * 3 / 2;
+
+                if (!(input = realloc(input, alloc * sizeof(*input))))
+                    ERROR(1, "error : failed to reallocate '%lu' bytes of memory\n",
+                        alloc * sizeof(*input));
+            }
         }
 
-        *size = assign;
+        *len = assign;
     }
 
     return input;
-}
-
-static int
-comparison(const void *a, const void *b)
-{
-    const struct item *tmp_a = &(*(struct item const *)a);
-    const struct item *tmp_b = &(*(struct item const *)b);
-
-    /* sort by string distance first */
-    int comp = tmp_a->distance -
-               tmp_b->distance;
-
-    /* sort alphabetically second */
-    return comp != 0
-        ? comp
-        : strncmp(
-            tmp_a->line,
-            tmp_b->line,
-            sizeof(tmp_a->line));
 }
 
 int
@@ -130,26 +149,23 @@ main(int argc, char **argv)
     if (argc != 2)
         usage(argv[0]);
 
-    size_t size;
+    struct item arg;
+    arg.str = argv[1];
+    arg.len = strnlen(arg.str, LINE_MAX);
+
+    size_t len;
     struct item *input;
+    input = get_input_list(arg, &len);
 
-    if (!(input = read_input(&size)))
-        ERROR(1, "error : failed to acquire input from stdin\n");
+    qsort(input, len, sizeof(*input), compare);
 
-    for (size_t i = 0; i < size; ++i) {
-        struct item *tmp = &input[i];
+    for (size_t i = 0; i < NB_CANDIDATES && i < len; ++i)
+        puts(input[i].str);
 
-        tmp->distance = string_distance(argv[1], tmp->line);
-    }
-
-    qsort(input, size, sizeof(*input), comparison);
-
-    for (size_t i = 0; i < NUM && i < size; ++i) {
-        struct item *tmp = &input[i];
-
-        puts(tmp->line);
-    }
+    for (size_t i = 0; i < len; ++i)
+        free(input[i].str);
 
     free(input);
+
     return 0;
 }
