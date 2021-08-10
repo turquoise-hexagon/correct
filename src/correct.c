@@ -46,8 +46,11 @@ distance(struct item a, struct item b)
 {
     static int array[LEVENSHTEIN_MAX + 1][LEVENSHTEIN_MAX + 1] = {{0}};
 
-    size_t len_a = a.len < LEVENSHTEIN_MAX ? a.len : LEVENSHTEIN_MAX;
-    size_t len_b = b.len < LEVENSHTEIN_MAX ? b.len : LEVENSHTEIN_MAX;
+    size_t len_a;
+    size_t len_b;
+
+    len_a = min2(a.len, LEVENSHTEIN_MAX);
+    len_b = min2(b.len, LEVENSHTEIN_MAX);
 
     for (size_t i = 0; i <= len_a; ++i) array[i][0] = (int)i;
     for (size_t i = 0; i <= len_b; ++i) array[0][i] = (int)i;
