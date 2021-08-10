@@ -118,17 +118,15 @@ get_input_list(struct item arg, size_t *len)
         while (fgets(buf, sizeof(buf), stdin)) {
             struct item *cur = &input[assign];
 
-            {
-                cur->len = strnlen(buf, sizeof(buf)) - 1;
+            cur->len = strnlen(buf, sizeof(buf)) - 1;
 
-                /* fix string */
-                buf[cur->len] = 0;
+            /* fix string */
+            buf[cur->len] = 0;
 
-                if (!(cur->str = strndup(buf, cur->len)))
-                    ERROR(1, "error : failed to copy string of length '%lu'\n", cur->len);
+            if (!(cur->str = strndup(buf, cur->len)))
+                ERROR(1, "error : failed to copy string of length '%lu'\n", cur->len);
 
-                cur->dist = distance(arg, *cur); ++assign;
-            }
+            cur->dist = distance(arg, *cur); ++assign;
 
             /* reallocate buffer if necessary */
             if (assign == alloc) {
